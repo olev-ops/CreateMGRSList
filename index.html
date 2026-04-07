@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MGRS List to GPX</title>
+  <title>MGRS List to GPX / KML</title>
   <style>
     :root {
       color-scheme: dark;
@@ -43,17 +43,9 @@
       margin-bottom: 18px;
     }
 
-    h1, h2, h3 {
-      margin-top: 0;
-    }
-
-    p, li {
-      line-height: 1.45;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
+    h1, h2, h3 { margin-top: 0; }
+    p, li { line-height: 1.45; }
+    .muted { color: var(--muted); }
 
     .grid {
       display: grid;
@@ -62,9 +54,7 @@
     }
 
     @media (max-width: 900px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
+      .grid { grid-template-columns: 1fr; }
     }
 
     label {
@@ -98,13 +88,8 @@
       transition: transform 0.08s ease, opacity 0.2s ease;
     }
 
-    button:hover {
-      opacity: 0.95;
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
+    button:hover { opacity: 0.95; }
+    button:active { transform: translateY(1px); }
 
     .row {
       display: flex;
@@ -113,25 +98,15 @@
       align-items: center;
     }
 
-    .primary {
-      background: var(--accent);
-      color: #082f49;
+    .field {
+      flex: 1 1 220px;
+      min-width: 220px;
     }
 
-    .success {
-      background: var(--accent-2);
-      color: #052e16;
-    }
-
-    .secondary {
-      background: #334155;
-      color: white;
-    }
-
-    .danger {
-      background: var(--danger);
-      color: white;
-    }
+    .primary { background: var(--accent); color: #082f49; }
+    .success { background: var(--accent-2); color: #052e16; }
+    .secondary { background: #334155; color: white; }
+    .danger { background: var(--danger); color: white; }
 
     .pill {
       display: inline-block;
@@ -192,9 +167,9 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>MGRS List → GPX</h1>
+      <h1>MGRS List → GPX / KML</h1>
       <p class="muted">
-        Paste a list of MGRS coordinates, convert them to latitude/longitude in the browser, then download a GPX file.
+        Paste a list of MGRS coordinates, convert them to latitude/longitude in the browser, then download a GPX or KML file.
       </p>
       <div>
         <span class="pill">Runs fully in browser</span>
@@ -206,12 +181,13 @@
     <div class="grid">
       <div class="card">
         <h2>Input</h2>
+
         <div class="row" style="align-items: end; margin-bottom: 12px;">
-          <div style="flex: 1 1 220px;">
+          <div class="field">
             <label for="namePrefix">Waypoint name prefix</label>
             <input id="namePrefix" value="WP" />
           </div>
-          <div style="flex: 1 1 220px;">
+          <div class="field">
             <label for="routeColor">Route color</label>
             <select id="routeColor">
               <option value="ff0000" selected>Red</option>
@@ -221,9 +197,14 @@
               <option value="ff00ff">Magenta</option>
             </select>
           </div>
+          <div class="field">
+            <label for="exportFormat">Export format</label>
+            <select id="exportFormat">
+              <option value="gpx" selected>GPX</option>
+              <option value="kml">KML</option>
+            </select>
+          </div>
         </div>
-
-        
 
         <label for="mgrsInput">MGRS coordinates (one per line)</label>
         <textarea id="mgrsInput" placeholder="Example:
@@ -247,9 +228,9 @@
         <ul class="muted">
           <li>Accepted format: <code>35V LF 67440 84818</code></li>
           <li>Also accepted without spaces: <code>35VLF6744084818</code></li>
-          <li>All points become GPX waypoints.</li>
-          <li>For mixed precision, the app pads shorter numeric parts to match MGRS rules.</li>
-          <li>This app assumes standard NATO MGRS formatting.</li>
+          <li>Convert Points creates markers only.</li>
+          <li>Convert Route creates markers plus a connected line.</li>
+          <li>KML styling is usually respected better than GPX styling.</li>
         </ul>
 
         <h3>Detected points</h3>
@@ -258,8 +239,8 @@
     </div>
 
     <div class="card">
-      <h2>Generated GPX</h2>
-      <div id="gpxOutput" class="output">No GPX generated yet.</div>
+      <h2>Generated export</h2>
+      <div id="gpxOutput" class="output">No export generated yet.</div>
     </div>
   </div>
 
@@ -275,27 +256,15 @@
     const previewEl = document.getElementById('preview');
     const namePrefixEl = document.getElementById('namePrefix');
     const routeColorEl = document.getElementById('routeColor');
+    const exportFormatEl = document.getElementById('exportFormat');
 
-    let latestGpx = '';
+    let latestExportText = '';
+    let latestExportType = 'gpx';
     let latestPoints = [];
 
-    const SET_ORIGIN_COLUMN = {
-      A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8,
-      J: 1, K: 2, L: 3, M: 4, N: 5, P: 6, Q: 7, R: 8,
-      S: 1, T: 2, U: 3, V: 4, W: 5, X: 6, Y: 7, Z: 8
-    };
-
-    const SET_ORIGIN_ROW = {
-      A: 0, F: 1, A2: 0, F2: 1
-    };
-
     const COLUMN_SETS = [
-      'ABCDEFGH',
-      'JKLMNPQR',
-      'STUVWXYZ',
-      'ABCDEFGH',
-      'JKLMNPQR',
-      'STUVWXYZ'
+      'ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ',
+      'ABCDEFGH', 'JKLMNPQR', 'STUVWXYZ'
     ];
 
     const ROW_SETS = [
@@ -311,6 +280,10 @@
       statusEl.innerHTML = html;
     }
 
+    function updateDownloadButtonLabel() {
+      downloadBtn.textContent = exportFormatEl.value === 'kml' ? 'Download KML' : 'Download GPX';
+    }
+
     function escapeXml(value) {
       return String(value)
         .replace(/&/g, '&amp;')
@@ -320,38 +293,25 @@
         .replace(/'/g, '&apos;');
     }
 
-    function toRadians(deg) {
-      return deg * Math.PI / 180;
-    }
-
-    function toDegrees(rad) {
-      return rad * 180 / Math.PI;
-    }
+    function toRadians(deg) { return deg * Math.PI / 180; }
+    function toDegrees(rad) { return rad * 180 / Math.PI; }
 
     function parseLine(line) {
       const compact = line.toUpperCase().replace(/\s+/g, '');
       const match = compact.match(/^(\d{1,2})([C-HJ-NP-X])([A-HJ-Z]{2})(\d{2,10})$/);
-      if (!match) {
-        throw new Error('Invalid MGRS format');
-      }
+      if (!match) throw new Error('Invalid MGRS format');
 
       const zone = parseInt(match[1], 10);
       const band = match[2];
       const grid = match[3];
       const digits = match[4];
 
-      if (zone < 1 || zone > 60) {
-        throw new Error('Zone must be 1..60');
-      }
-
-      if (digits.length % 2 !== 0) {
-        throw new Error('Numeric part must have even number of digits');
-      }
+      if (zone < 1 || zone > 60) throw new Error('Zone must be 1..60');
+      if (digits.length % 2 !== 0) throw new Error('Numeric part must have even number of digits');
 
       const precision = digits.length / 2;
       const eastingPart = digits.slice(0, precision);
       const northingPart = digits.slice(precision);
-      const scale = Math.pow(10, 5 - precision);
 
       return {
         original: line,
@@ -360,58 +320,16 @@
         columnLetter: grid[0],
         rowLetter: grid[1],
         eastingPart,
-        northingPart,
-        precision,
-        scale
+        northingPart
       };
     }
 
     function bandMinLat(band) {
       const bands = 'CDEFGHJKLMNPQRSTUVWX';
       const idx = bands.indexOf(band);
-      if (idx === -1) {
-        throw new Error('Invalid latitude band');
-      }
+      if (idx === -1) throw new Error('Invalid latitude band');
       if (band === 'X') return 72;
       return -80 + idx * 8;
-    }
-
-    function latitudeToZoneBandNorthing(lat, zone) {
-      const lon = (zone - 1) * 6 - 180 + 3;
-      const { northing } = latLonToUtm(lat, lon, zone);
-      return northing;
-    }
-
-    function mgrsToUtm(parsed) {
-      const setIndex = ((parsed.zone - 1) % 6);
-      const colSet = COLUMN_SETS[setIndex];
-      const rowSet = ROW_SETS[setIndex];
-
-      const colIndex = colSet.indexOf(parsed.columnLetter);
-      if (colIndex === -1) {
-        throw new Error('Invalid 100km column letter for zone');
-      }
-
-      const rowIndex = rowSet.indexOf(parsed.rowLetter);
-      if (rowIndex === -1) {
-        throw new Error('Invalid 100km row letter for zone');
-      }
-
-      const easting = (colIndex + 1) * 100000 + parseInt(parsed.eastingPart.padEnd(5, '0'), 10);
-
-      let northing = rowIndex * 100000 + parseInt(parsed.northingPart.padEnd(5, '0'), 10);
-      const minNorthing = latitudeToZoneBandNorthing(bandMinLat(parsed.band), parsed.zone);
-
-      while (northing < minNorthing) {
-        northing += 2000000;
-      }
-
-      return {
-        zone: parsed.zone,
-        hemisphere: parsed.band >= 'N' ? 'N' : 'S',
-        easting,
-        northing
-      };
     }
 
     function latLonToUtm(lat, lon, forcedZone = null) {
@@ -420,7 +338,6 @@
       const k0 = 0.9996;
       const e2 = f * (2 - f);
       const ep2 = e2 / (1 - e2);
-
       const zone = forcedZone || Math.floor((lon + 180) / 6) + 1;
       const lon0 = toRadians((zone - 1) * 6 - 180 + 3);
       const latRad = toRadians(lat);
@@ -439,12 +356,40 @@
       );
 
       let easting = k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T ** 2 + 72 * C - 58 * ep2) * A ** 5 / 120) + 500000;
-
       let northing = k0 * (M + N * Math.tan(latRad) * (A ** 2 / 2 + (5 - T + 9 * C + 4 * C ** 2) * A ** 4 / 24 + (61 - 58 * T + T ** 2 + 600 * C - 330 * ep2) * A ** 6 / 720));
-
       if (lat < 0) northing += 10000000;
 
       return { zone, easting, northing };
+    }
+
+    function latitudeToZoneBandNorthing(lat, zone) {
+      const lon = (zone - 1) * 6 - 180 + 3;
+      const { northing } = latLonToUtm(lat, lon, zone);
+      return northing;
+    }
+
+    function mgrsToUtm(parsed) {
+      const setIndex = ((parsed.zone - 1) % 6);
+      const colSet = COLUMN_SETS[setIndex];
+      const rowSet = ROW_SETS[setIndex];
+
+      const colIndex = colSet.indexOf(parsed.columnLetter);
+      if (colIndex === -1) throw new Error('Invalid 100km column letter for zone');
+
+      const rowIndex = rowSet.indexOf(parsed.rowLetter);
+      if (rowIndex === -1) throw new Error('Invalid 100km row letter for zone');
+
+      const easting = (colIndex + 1) * 100000 + parseInt(parsed.eastingPart.padEnd(5, '0'), 10);
+      let northing = rowIndex * 100000 + parseInt(parsed.northingPart.padEnd(5, '0'), 10);
+      const minNorthing = latitudeToZoneBandNorthing(bandMinLat(parsed.band), parsed.zone);
+      while (northing < minNorthing) northing += 2000000;
+
+      return {
+        zone: parsed.zone,
+        hemisphere: parsed.band >= 'N' ? 'N' : 'S',
+        easting,
+        northing
+      };
     }
 
     function utmToLatLon(zone, hemisphere, easting, northing) {
@@ -487,19 +432,16 @@
         + (5 - 2 * C1 + 28 * T1 - 3 * C1 ** 2 + 8 * ep2 + 24 * T1 ** 2) * D ** 5 / 120
       ) / Math.cos(phi1);
 
-      return {
-        lat: toDegrees(lat),
-        lon: toDegrees(lon)
-      };
+      return { lat: toDegrees(lat), lon: toDegrees(lon) };
     }
 
     function buildGpx(points, includeRoute = false) {
       const now = new Date().toISOString();
       const lines = [];
       lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-      lines.push('<gpx version="1.1" creator="MGRS List to GPX" xmlns="http://www.topografix.com/GPX/1/1">');
+      lines.push('<gpx version="1.1" creator="MGRS List Export" xmlns="http://www.topografix.com/GPX/1/1">');
       lines.push('  <metadata>');
-      lines.push(`    <name>MGRS Export</name>`);
+      lines.push('    <name>MGRS Export</name>');
       lines.push(`    <time>${now}</time>`);
       lines.push('  </metadata>');
 
@@ -511,14 +453,7 @@
       }
 
       if (includeRoute && points.length > 1) {
-        const color = routeColorEl.value;
-        lines.push('  <extensions>');
-        lines.push('    <gpxx:TrackExtension xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3">');
-        lines.push(`      <gpxx:DisplayColor>${color}</gpxx:DisplayColor>`);
-        lines.push('    </gpxx:TrackExtension>');
-        lines.push('  </extensions>');
         lines.push('  <rte>');
-        lines.push(`    <extensions><line color="#${routeColorEl.value}" width="4"/></extensions>`);
         lines.push(`    <name>${escapeXml((namePrefixEl.value.trim() || 'Route') + ' Route')}</name>`);
         for (const point of points) {
           lines.push(`    <rtept lat="${point.lat.toFixed(8)}" lon="${point.lon.toFixed(8)}">`);
@@ -530,6 +465,59 @@
       }
 
       lines.push('</gpx>');
+      return lines.join('\n');
+    }
+
+    function hexToKmlColor(hex) {
+      const clean = hex.replace('#', '').toLowerCase();
+      const r = clean.slice(0, 2);
+      const g = clean.slice(2, 4);
+      const b = clean.slice(4, 6);
+      return `ff${b}${g}${r}`;
+    }
+
+    function buildKml(points, includeRoute = false) {
+      const routeName = escapeXml((namePrefixEl.value.trim() || 'Route') + ' Route');
+      const color = hexToKmlColor(routeColorEl.value);
+      const lines = [];
+      lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+      lines.push('<kml xmlns="http://www.opengis.net/kml/2.2">');
+      lines.push('  <Document>');
+      lines.push('    <name>MGRS Export</name>');
+      lines.push('    <Style id="routeStyle">');
+      lines.push('      <LineStyle>');
+      lines.push(`        <color>${color}</color>`);
+      lines.push('        <width>4</width>');
+      lines.push('      </LineStyle>');
+      lines.push('    </Style>');
+
+      for (const point of points) {
+        lines.push('    <Placemark>');
+        lines.push(`      <name>${escapeXml(point.name)}</name>`);
+        lines.push(`      <description>${escapeXml(point.original)}</description>`);
+        lines.push('      <Point>');
+        lines.push(`        <coordinates>${point.lon.toFixed(8)},${point.lat.toFixed(8)},0</coordinates>`);
+        lines.push('      </Point>');
+        lines.push('    </Placemark>');
+      }
+
+      if (includeRoute && points.length > 1) {
+        lines.push('    <Placemark>');
+        lines.push(`      <name>${routeName}</name>`);
+        lines.push('      <styleUrl>#routeStyle</styleUrl>');
+        lines.push('      <LineString>');
+        lines.push('        <tessellate>1</tessellate>');
+        lines.push('        <coordinates>');
+        for (const point of points) {
+          lines.push(`          ${point.lon.toFixed(8)},${point.lat.toFixed(8)},0`);
+        }
+        lines.push('        </coordinates>');
+        lines.push('      </LineString>');
+        lines.push('    </Placemark>');
+      }
+
+      lines.push('  </Document>');
+      lines.push('</kml>');
       return lines.join('\n');
     }
 
@@ -567,8 +555,9 @@
       const raw = mgrsInput.value.trim();
       if (!raw) {
         latestPoints = [];
-        latestGpx = '';
-        gpxOutput.textContent = 'No GPX generated yet.';
+        latestExportText = '';
+        latestExportType = exportFormatEl.value;
+        gpxOutput.textContent = 'No export generated yet.';
         renderPreview([]);
         setStatus('<span class="bad">Please paste at least one MGRS coordinate.</span>');
         return;
@@ -597,40 +586,48 @@
       });
 
       latestPoints = points;
-      latestGpx = points.length ? buildGpx(points, includeRoute) : '';
-      gpxOutput.textContent = latestGpx || 'No GPX generated because nothing valid was converted.';
+      latestExportType = exportFormatEl.value;
+      latestExportText = points.length
+        ? (latestExportType === 'kml' ? buildKml(points, includeRoute) : buildGpx(points, includeRoute))
+        : '';
+
+      gpxOutput.textContent = latestExportText || `No ${latestExportType.toUpperCase()} generated because nothing valid was converted.`;
       renderPreview(points);
 
       const modeText = includeRoute ? 'route + waypoints' : 'waypoints';
+      const formatText = latestExportType.toUpperCase();
 
       if (points.length && errors.length === 0) {
-        setStatus(`<span class="ok">Converted ${points.length} point(s) successfully as ${modeText}.</span>`);
+        setStatus(`<span class="ok">Converted ${points.length} point(s) successfully as ${modeText} in ${formatText}.</span>`);
       } else if (points.length && errors.length) {
-        setStatus(`<span class="ok">Converted ${points.length} point(s) as ${modeText}.</span><br><span class="bad">${errors.length} line(s) failed:</span><br>${errors.map(escapeXml).join('<br>')}`);
+        setStatus(`<span class="ok">Converted ${points.length} point(s) as ${modeText} in ${formatText}.</span><br><span class="bad">${errors.length} line(s) failed:</span><br>${errors.map(escapeXml).join('<br>')}`);
       } else {
         setStatus(`<span class="bad">No valid points converted.</span><br>${errors.map(escapeXml).join('<br>')}`);
       }
     }
 
     function downloadGpx() {
-      if (!latestGpx) {
+      if (!latestExportText) {
         setStatus('<span class="bad">Nothing to download yet. Convert coordinates first.</span>');
         return;
       }
 
-      const blob = new Blob([latestGpx], { type: 'application/gpx+xml;charset=utf-8' });
+      const mimeType = latestExportType === 'kml'
+        ? 'application/vnd.google-earth.kml+xml;charset=utf-8'
+        : 'application/gpx+xml;charset=utf-8';
+      const blob = new Blob([latestExportText], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       const now = new Date();
       const pad = (n) => String(n).padStart(2, '0');
       const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-      a.download = `mgrs-export_${timestamp}.gpx`;
+      a.download = `mgrs-export_${timestamp}.${latestExportType}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setStatus(`<span class="ok">Downloaded GPX with ${latestPoints.length} waypoint(s).</span>`);
+      setStatus(`<span class="ok">Downloaded ${latestExportType.toUpperCase()} with ${latestPoints.length} waypoint(s).</span>`);
     }
 
     function loadSample() {
@@ -646,8 +643,9 @@
     function clearAll() {
       mgrsInput.value = '';
       latestPoints = [];
-      latestGpx = '';
-      gpxOutput.textContent = 'No GPX generated yet.';
+      latestExportText = '';
+      latestExportType = exportFormatEl.value;
+      gpxOutput.textContent = 'No export generated yet.';
       renderPreview([]);
       setStatus('Cleared.');
     }
@@ -657,6 +655,9 @@
     sampleBtn.addEventListener('click', loadSample);
     clearBtn.addEventListener('click', clearAll);
     downloadBtn.addEventListener('click', downloadGpx);
+    exportFormatEl.addEventListener('change', updateDownloadButtonLabel);
+
+    updateDownloadButtonLabel();
   </script>
 </body>
 </html>
