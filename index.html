@@ -206,18 +206,24 @@
     <div class="grid">
       <div class="card">
         <h2>Input</h2>
-        <label for="namePrefix">Waypoint name prefix</label>
-        <label for="routeColor">Route color</label>
-        <select id="routeColor">
-          <option value="ff0000" selected>Red</option>
-          <option value="00ff00">Green</option>
-          <option value="0000ff">Blue</option>
-          <option value="ffff00">Yellow</option>
-          <option value="ff00ff">Magenta</option>
-        </select>
-        <input id="namePrefix" value="WP" />
+        <div class="row" style="align-items: end; margin-bottom: 12px;">
+          <div style="flex: 1 1 220px;">
+            <label for="namePrefix">Waypoint name prefix</label>
+            <input id="namePrefix" value="WP" />
+          </div>
+          <div style="flex: 1 1 220px;">
+            <label for="routeColor">Route color</label>
+            <select id="routeColor">
+              <option value="ff0000" selected>Red</option>
+              <option value="00ff00">Green</option>
+              <option value="0000ff">Blue</option>
+              <option value="ffff00">Yellow</option>
+              <option value="ff00ff">Magenta</option>
+            </select>
+          </div>
+        </div>
 
-        <div style="height: 12px;"></div>
+        
 
         <label for="mgrsInput">MGRS coordinates (one per line)</label>
         <textarea id="mgrsInput" placeholder="Example:
