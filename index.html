@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -220,7 +219,8 @@
 
         <div class="row" style="margin-top: 12px;">
           <button id="sampleBtn" class="secondary">Load sample</button>
-          <button id="convertBtn" class="primary">Convert</button>
+          <button id="convertBtn" class="primary">Convert Points</button>
+          <button id="routeBtn" class="primary">Convert Route</button>
           <button id="downloadBtn" class="success">Download GPX</button>
           <button id="clearBtn" class="danger">Clear</button>
         </div>
@@ -254,6 +254,7 @@
     const convertBtn = document.getElementById('convertBtn');
     const sampleBtn = document.getElementById('sampleBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const routeBtn = document.getElementById('routeBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const gpxOutput = document.getElementById('gpxOutput');
     const statusEl = document.getElementById('status');
@@ -477,7 +478,7 @@
       };
     }
 
-    function buildGpx(points) {
+    function buildGpx(points, includeRoute = false) {
       const now = new Date().toISOString();
       const lines = [];
       lines.push('<?xml version="1.0" encoding="UTF-8"?>');
@@ -492,6 +493,18 @@
         lines.push(`    <name>${escapeXml(point.name)}</name>`);
         lines.push(`    <desc>${escapeXml(point.original)}</desc>`);
         lines.push('  </wpt>');
+      }
+
+      if (includeRoute && points.length > 1) {
+        lines.push('  <rte>');
+        lines.push(`    <name>${escapeXml((namePrefixEl.value.trim() || 'Route') + ' Route')}</name>`);
+        for (const point of points) {
+          lines.push(`    <rtept lat="${point.lat.toFixed(8)}" lon="${point.lon.toFixed(8)}">`);
+          lines.push(`      <name>${escapeXml(point.name)}</name>`);
+          lines.push(`      <desc>${escapeXml(point.original)}</desc>`);
+          lines.push('    </rtept>');
+        }
+        lines.push('  </rte>');
       }
 
       lines.push('</gpx>');
@@ -528,7 +541,7 @@
       `;
     }
 
-    function convertAll() {
+    function convertAll(includeRoute = false) {
       const raw = mgrsInput.value.trim();
       if (!raw) {
         latestPoints = [];
@@ -562,14 +575,16 @@
       });
 
       latestPoints = points;
-      latestGpx = points.length ? buildGpx(points) : '';
+      latestGpx = points.length ? buildGpx(points, includeRoute) : '';
       gpxOutput.textContent = latestGpx || 'No GPX generated because nothing valid was converted.';
       renderPreview(points);
 
+      const modeText = includeRoute ? 'route + waypoints' : 'waypoints';
+
       if (points.length && errors.length === 0) {
-        setStatus(`<span class="ok">Converted ${points.length} point(s) successfully.</span>`);
+        setStatus(`<span class="ok">Converted ${points.length} point(s) successfully as ${modeText}.</span>`);
       } else if (points.length && errors.length) {
-        setStatus(`<span class="ok">Converted ${points.length} point(s).</span><br><span class="bad">${errors.length} line(s) failed:</span><br>${errors.map(escapeXml).join('<br>')}`);
+        setStatus(`<span class="ok">Converted ${points.length} point(s) as ${modeText}.</span><br><span class="bad">${errors.length} line(s) failed:</span><br>${errors.map(escapeXml).join('<br>')}`);
       } else {
         setStatus(`<span class="bad">No valid points converted.</span><br>${errors.map(escapeXml).join('<br>')}`);
       }
@@ -612,7 +627,8 @@
       setStatus('Cleared.');
     }
 
-    convertBtn.addEventListener('click', convertAll);
+    convertBtn.addEventListener('click', () => convertAll(false));
+    routeBtn.addEventListener('click', () => convertAll(true));
     sampleBtn.addEventListener('click', loadSample);
     clearBtn.addEventListener('click', clearAll);
     downloadBtn.addEventListener('click', downloadGpx);
