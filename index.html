@@ -207,6 +207,14 @@
       <div class="card">
         <h2>Input</h2>
         <label for="namePrefix">Waypoint name prefix</label>
+        <label for="routeColor">Route color</label>
+        <select id="routeColor">
+          <option value="ff0000" selected>Red</option>
+          <option value="00ff00">Green</option>
+          <option value="0000ff">Blue</option>
+          <option value="ffff00">Yellow</option>
+          <option value="ff00ff">Magenta</option>
+        </select>
         <input id="namePrefix" value="WP" />
 
         <div style="height: 12px;"></div>
@@ -260,6 +268,7 @@
     const statusEl = document.getElementById('status');
     const previewEl = document.getElementById('preview');
     const namePrefixEl = document.getElementById('namePrefix');
+    const routeColorEl = document.getElementById('routeColor');
 
     let latestGpx = '';
     let latestPoints = [];
@@ -496,7 +505,14 @@
       }
 
       if (includeRoute && points.length > 1) {
+        const color = routeColorEl.value;
+        lines.push('  <extensions>');
+        lines.push('    <gpxx:TrackExtension xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3">');
+        lines.push(`      <gpxx:DisplayColor>${color}</gpxx:DisplayColor>`);
+        lines.push('    </gpxx:TrackExtension>');
+        lines.push('  </extensions>');
         lines.push('  <rte>');
+        lines.push(`    <extensions><line color="#${routeColorEl.value}" width="4"/></extensions>`);
         lines.push(`    <name>${escapeXml((namePrefixEl.value.trim() || 'Route') + ' Route')}</name>`);
         for (const point of points) {
           lines.push(`    <rtept lat="${point.lat.toFixed(8)}" lon="${point.lon.toFixed(8)}">`);
@@ -600,7 +616,10 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'mgrs-export.gpx';
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+      a.download = `mgrs-export_${timestamp}.gpx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
