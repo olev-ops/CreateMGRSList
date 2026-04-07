@@ -206,6 +206,7 @@
           <li>Also accepted without spaces: <code>35VLF6744084818</code></li>
           <li>Convert Points creates markers only.</li>
           <li>Convert Route creates markers plus a connected line.</li>
+          <li>For GPX, the line is exported as a track for better compatibility.</li>
           <li>KML styling is usually respected better than GPX styling.</li>
         </ul>
         <h3>Detected points</h3>
@@ -422,19 +423,22 @@
       }
 
       if (includeRoute && points.length > 1) {
-        lines.push('  <rte>');
-        lines.push(`    <name>${escapeXml((namePrefixEl.value.trim() || 'Route') + ' Route')}</name>`);
+        lines.push('  <trk>');
+        lines.push(`    <name>${escapeXml((namePrefixEl.value.trim() || 'Route') + ' Track')}</name>`);
+        lines.push('    <trkseg>');
         for (const point of points) {
-          lines.push(`    <rtept lat="${point.lat.toFixed(8)}" lon="${point.lon.toFixed(8)}">`);
-          lines.push(`      <name>${escapeXml(point.name)}</name>`);
-          lines.push(`      <desc>${escapeXml(point.original)}</desc>`);
-          lines.push('    </rtept>');
+          lines.push(`      <trkpt lat="${point.lat.toFixed(8)}" lon="${point.lon.toFixed(8)}">`);
+          lines.push(`        <name>${escapeXml(point.name)}</name>`);
+          lines.push(`        <desc>${escapeXml(point.original)}</desc>`);
+          lines.push('      </trkpt>');
         }
-        lines.push('  </rte>');
+        lines.push('    </trkseg>');
+        lines.push('  </trk>');
       }
 
       lines.push('</gpx>');
-      return lines.join('\n');
+      return lines.join('
+');
     }
 
     function hexToKmlColor(hex) {
