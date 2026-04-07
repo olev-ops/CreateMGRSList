@@ -484,22 +484,28 @@
       lines.push('<kml xmlns="http://www.opengis.net/kml/2.2">');
       lines.push('  <Document>');
       lines.push('    <name>MGRS Export</name>');
+      lines.push('    <open>1</open>');
       lines.push('    <Style id="routeStyle">');
       lines.push('      <LineStyle>');
       lines.push(`        <color>${color}</color>`);
       lines.push('        <width>4</width>');
       lines.push('      </LineStyle>');
       lines.push('    </Style>');
+      lines.push('    <Folder>');
+      lines.push('      <name>Waypoints</name>');
 
       for (const point of points) {
-        lines.push('    <Placemark>');
-        lines.push(`      <name>${escapeXml(point.name)}</name>`);
-        lines.push(`      <description>${escapeXml(point.original)}</description>`);
-        lines.push('      <Point>');
-        lines.push(`        <coordinates>${point.lon.toFixed(8)},${point.lat.toFixed(8)},0</coordinates>`);
-        lines.push('      </Point>');
-        lines.push('    </Placemark>');
+        lines.push('      <Placemark>');
+        lines.push(`        <name>${escapeXml(point.name)}</name>`);
+        lines.push(`        <description>${escapeXml(point.original)}</description>`);
+        lines.push('        <Point>');
+        lines.push('          <altitudeMode>clampToGround</altitudeMode>');
+        lines.push(`          <coordinates>${point.lon.toFixed(8)},${point.lat.toFixed(8)},0</coordinates>`);
+        lines.push('        </Point>');
+        lines.push('      </Placemark>');
       }
+
+      lines.push('    </Folder>');
 
       if (includeRoute && points.length > 1) {
         lines.push('    <Placemark>');
@@ -507,6 +513,7 @@
         lines.push('      <styleUrl>#routeStyle</styleUrl>');
         lines.push('      <LineString>');
         lines.push('        <tessellate>1</tessellate>');
+        lines.push('        <altitudeMode>clampToGround</altitudeMode>');
         lines.push('        <coordinates>');
         for (const point of points) {
           lines.push(`          ${point.lon.toFixed(8)},${point.lat.toFixed(8)},0`);
@@ -518,7 +525,8 @@
 
       lines.push('  </Document>');
       lines.push('</kml>');
-      return lines.join('\n');
+      return lines.join('
+');
     }
 
     function renderPreview(points) {
